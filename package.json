@@ -1,0 +1,19 @@
+{
+  "name": "block-world-planning-simulator",
+  "version": "1.0.0",
+  "description": "Block World Planning Simulator using STRIPS Formalism and Goal Stack Planning",
+  "main": "js/app.js",
+  "scripts": {
+    "test": "node tests/test_planner.js && node tests/test_dom.js && node tests/test_presets.js",
+    "start": "python3 -m http.server 3000"
+  },
+  "keywords": [
+    "artificial-intelligence",
+    "strips",
+    "goal-stack-planning",
+    "blocks-world",
+    "automated-planning"
+  ],
+  "author": "",
+  "license": "MIT"
+}

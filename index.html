@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block World Planning Simulator | STRIPS & Goal Stack Planning</title>
+  <meta name="description" content="University AI Mini-Project: Block World Planning Simulator using classical STRIPS and Goal Stack Planning algorithms.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='90' height='90' rx='15' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>A</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-title-group">
+        <h1>
+          Block World Planning Simulator
+          <span class="badge-tag">AI Mini-Project</span>
+        </h1>
+        <p class="app-subtitle">Classical Planning with STRIPS Formalism &amp; Goal Stack Planning</p>
+      </div>
+
+      <!-- Quick Preset Selector -->
+      <div class="preset-bar">
+        <label for="presetSelect">Load Benchmark Preset:</label>
+        <select id="presetSelect">
+          <option value="sussman">Sussman Anomaly (Interacting Subgoals)</option>
+          <option value="invert2">Invert 2 Blocks (A on B &rarr; B on A)</option>
+          <option value="tower3">Build 3-Block Tower (A on B on C)</option>
+          <option value="tower4">4-Block Tower Inversion</option>
+          <option value="clearAll">Clear All Blocks to Table</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Global Notification Banners -->
+    <div id="generalError" class="error-banner" style="display: none; margin-bottom: 16px;"></div>
+    <div id="successBanner" class="error-banner" style="display: none; margin-bottom: 16px; background: var(--success-bg); border-color: var(--success-border); color: var(--success-color);"></div>
+
+    <!-- Section E: Execution Controls & Progress Bar -->
+    <section class="panel controls-panel" style="margin-bottom: 20px;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="section-label">Section E</span>
+          Execution Controls &amp; Progress
+        </div>
+        <div id="statusBadge" class="status-badge idle">IDLE</div>
+      </div>
+
+      <div class="controls-row">
+        <!-- Action Buttons -->
+        <div class="button-group">
+          <button id="btnGenerate" class="btn btn-primary" title="Synthesize STRIPS plan via Goal Stack Planning">
+            ⚡ Generate Plan
+          </button>
+          <button id="btnExecute" class="btn btn-success" disabled title="Automatically step through remaining actions">
+            ▶ Execute Plan
+          </button>
+          <button id="btnNext" class="btn btn-secondary" disabled title="Step forward exactly one action">
+            &rarr; Next Step
+          </button>
+          <button id="btnReset" class="btn btn-secondary" disabled title="Restore initial world state">
+            ↺ Reset
+          </button>
+        </div>
+
+        <!-- Real-Time Progress -->
+        <div id="progressDisplay" class="status-indicator-box">
+          <div>Status: <span id="progressText" class="progress-text">Plan not generated</span></div>
+          <div>Current Action: <span id="actionHighlight" class="action-highlight-text">None</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Grid: Initial State & Goal State -->
+    <div class="simulator-grid">
+      
+      <!-- Section A: Initial State -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="section-label">Section A</span>
+            Initial State
+          </div>
+          <span class="badge-tag">Starting World</span>
+        </div>
+        <p class="panel-desc">Defines the beginning positions of blocks A, B, C, and D.</p>
+
+        <!-- Visual Stage -->
+        <div id="initialStage" class="stage-container"></div>
+
+        <!-- Position Dropdown Configurator -->
+        <div class="config-row">
+          <div class="config-item">
+            <label for="init_pos_A">Block A on:</label>
+            <select id="init_pos_A">
+              <option value="table">Table</option>
+              <option value="B">On B</option>
+              <option value="C">On C</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="init_pos_B">Block B on:</label>
+            <select id="init_pos_B">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="C">On C</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="init_pos_C">Block C on:</label>
+            <select id="init_pos_C">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="B">On B</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="init_pos_D">Block D on:</label>
+            <select id="init_pos_D">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="B">On B</option>
+              <option value="C">On C</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Validation Error Message -->
+        <div id="initialError" class="error-banner" style="display: none;"></div>
+
+        <!-- Predicates Box -->
+        <div class="predicates-box">
+          <div class="predicates-label">Active STRIPS Predicates:</div>
+          <div id="initialPreds" class="predicate-tags"></div>
+        </div>
+      </section>
+
+      <!-- Section B: Goal State -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="section-label">Section B</span>
+            Goal State
+          </div>
+          <span class="badge-tag">Target World</span>
+        </div>
+        <p class="panel-desc">Defines the desired configuration that the AI planner must achieve.</p>
+
+        <!-- Visual Stage -->
+        <div id="goalStage" class="stage-container"></div>
+
+        <!-- Position Dropdown Configurator -->
+        <div class="config-row">
+          <div class="config-item">
+            <label for="goal_pos_A">Block A on:</label>
+            <select id="goal_pos_A">
+              <option value="table">Table</option>
+              <option value="B">On B</option>
+              <option value="C">On C</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="goal_pos_B">Block B on:</label>
+            <select id="goal_pos_B">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="C">On C</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="goal_pos_C">Block C on:</label>
+            <select id="goal_pos_C">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="B">On B</option>
+              <option value="D">On D</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label for="goal_pos_D">Block D on:</label>
+            <select id="goal_pos_D">
+              <option value="table">Table</option>
+              <option value="A">On A</option>
+              <option value="B">On B</option>
+              <option value="C">On C</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Validation Error Message -->
+        <div id="goalError" class="error-banner" style="display: none;"></div>
+
+        <!-- Predicates Box -->
+        <div class="predicates-box">
+          <div class="predicates-label">Goal Target Predicates:</div>
+          <div id="goalPreds" class="predicate-tags"></div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Middle Grid: Current State (Execution Stage) -->
+    <section class="panel" style="margin-bottom: 24px;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="section-label">Section C</span>
+          Current State (Live World Simulation)
+        </div>
+        <span class="badge-tag">Dynamic State</span>
+      </div>
+      <p class="panel-desc">Reflects real-time state changes as actions from the generated plan are applied by the robot arm.</p>
+
+      <div class="stage-container" style="min-height: 220px;">
+        <!-- Robot Arm Status Bar -->
+        <div class="robot-arm-display">
+          <div>Robot Arm: <span id="armStatusText" class="arm-status-text">ARMEMPTY</span></div>
+          <div class="arm-holding-slot" id="armHoldingSlot">
+            <span style="color:#94a3b8;font-size:11px;">[Empty]</span>
+          </div>
+        </div>
+
+        <!-- Blocks Stage -->
+        <div id="currentStage"></div>
+      </div>
+
+      <div class="predicates-box" style="margin-top: 14px;">
+        <div class="predicates-label">Current STRIPS State Predicates:</div>
+        <div id="currentPreds" class="predicate-tags"></div>
+      </div>
+    </section>
+
+    <!-- Bottom Grid: Section D (Generated Plan) and Action Inspector -->
+    <div class="plan-section-grid">
+      
+      <!-- Section D: Generated Plan -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="section-label">Section D</span>
+            Generated Plan (Action Sequence)
+          </div>
+          <span class="badge-tag">Goal Stack Output</span>
+        </div>
+        <p class="panel-desc">Click any step in the table to inspect its STRIPS preconditions and effects.</p>
+
+        <div id="planContainer" class="plan-table-container">
+          <table class="plan-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Step</th>
+                <th style="width: 140px;">Action</th>
+                <th>Description</th>
+                <th style="width: 90px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="planTableBody">
+              <tr>
+                <td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  No plan generated yet. Click "Generate Plan" above.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Action Inspector -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">STRIPS Action Inspector</div>
+          <span class="badge-tag">Operator Details</span>
+        </div>
+        <div class="inspector-card">
+          <div class="inspector-header">
+            Action: <span id="inspectorTitle" style="color:var(--primary-blue);">None Selected</span>
+          </div>
+          <p id="inspectorDesc" class="inspector-desc">Select an action step to view its preconditions and effect sets.</p>
+
+          <div class="inspector-lists">
+            <div class="inspector-group">
+              <div class="inspector-group-title">Preconditions (Must be TRUE before execution):</div>
+              <div id="inspectorPre" class="predicate-tags">
+                <span style="color:#94a3b8; font-size:11px;">None</span>
+              </div>
+            </div>
+
+            <div class="inspector-group">
+              <div class="inspector-group-title">Add Effects (Made TRUE after execution):</div>
+              <div id="inspectorAdd" class="predicate-tags">
+                <span style="color:#94a3b8; font-size:11px;">None</span>
+              </div>
+            </div>
+
+            <div class="inspector-group">
+              <div class="inspector-group-title">Delete Effects (Made FALSE after execution):</div>
+              <div id="inspectorDel" class="predicate-tags">
+                <span style="color:#94a3b8; font-size:11px;">None</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      Block World Planning Simulator &bull; University AI Mini-Project Demonstration &bull; STRIPS &amp; Goal Stack Planning
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/strips.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
