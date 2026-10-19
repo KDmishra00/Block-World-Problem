@@ -30,9 +30,9 @@ for (const id of expectedIds) {
 }
 
 // Verify script tags order in index.html
-const stripsIdx = html.indexOf('src="js/strips.js"');
-const plannerIdx = html.indexOf('src="js/planner.js"');
-const appIdx = html.indexOf('src="js/app.js"');
+const stripsIdx = html.indexOf('src="strips.js"');
+const plannerIdx = html.indexOf('src="planner.js"');
+const appIdx = html.indexOf('src="app.js"');
 
 assert(stripsIdx > -1, 'strips.js script tag missing');
 assert(plannerIdx > stripsIdx, 'planner.js must load after strips.js');

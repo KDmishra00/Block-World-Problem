@@ -3,8 +3,14 @@
  */
 
 const assert = require('assert');
-const STRIPS = require('../js/strips.js');
-const GoalStackPlanner = require('../js/planner.js');
+const fs = require('fs');
+const path = require('path');
+const STRIPS = fs.existsSync(path.join(__dirname, 'strips.js'))
+  ? require('./strips.js')
+  : require('./js/strips.js');
+const GoalStackPlanner = fs.existsSync(path.join(__dirname, 'planner.js'))
+  ? require('./planner.js')
+  : require('./js/planner.js');
 
 const BLOCKS = ['A', 'B', 'C', 'D'];
 
